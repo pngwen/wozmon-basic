@@ -73,6 +73,8 @@ Here's an outline of the monitor operations:
 5. Quit: Q
 ```
     ? Q
+
+    READY.
 ```
 And that's it! This gives you total control of memory for your
 exploration and machine coding needs. Note that all numbers are in
