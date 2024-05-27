@@ -14,9 +14,9 @@ memory accesses. For example, rather than port the keyboard routines
 directly, I used basic's INPUT command. This also greatly shortened
 the length of the resultant code.
 
-Compatability
+Compatibility
 =============
-This program is compatable with commodore 64, commodore 128, and
+This program is compatible with commodore 64, commodore 128, and
 commander x16. It may be compatible with other BASIC dialects,
 especially those written by Microsoft, but I have only fully tested on
 these. I designed the program to be easily portable to other
@@ -25,7 +25,7 @@ modifications.
 
 Usage 
 =====
-This program is essentially idential to the original WOZMON, with two
+This program is essentially identical to the original WOZMON, with two
 important exceptions. We cannot read the ":" character as string input
 on the C64 as it uses it as a field separator. So this is replaced
 with "=". Also, because this program is not really the whole operating
