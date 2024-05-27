@@ -23,6 +23,59 @@ these. I designed the program to be easily portable to other
 platforms, and as I port it to others, I will make these
 modifications.
 
+Usage 
+=====
+This program is essentially idential to the original WOZMON, with two
+important exceptions. We cannot read the ":" character as string input
+on the C64 as it uses it as a field separator. So this is replaced
+with "=". Also, because this program is not really the whole operating
+system of your C64, I added "Q" as a quit command.  If you already
+know how to use wozmon, these are the only changes you will see.
+
+Here's an outline of the monitor operations:
+1. Examine a byte: < Address >
+    ? C000
+     
+    C000: FF
+
+2. Block Examine: < Start Address >.< End Address >
+    ? C000.C00F
+     
+    C000: FF 00 00 FF FF 2A AC AB
+    C008: 00 00 00 FF FF FF FF FF
+
+3. Deposit Bytes: < Start Address > = < Byte 1 > < Byte 2 > ...
+    ? C000=60 01 02
+
+    C000: FF
+    ? C000.C007
+
+    C000: 60 01 02 FF FF 2A AC AB
+
+   Note that when you do the deposit, it will display the byte that
+   was originally at that address. This is because the monitor
+   interprets the examine command first, followed by the deposit.
+   Assignment can be continued by beginning subsequent lines with "="
+
+4. Run: < Address > R
+    ? C000 R
+
+    ? 
+
+   Here, I ran the program which consists of a single RTS instruction
+   input in example 3. (Ok, so it's an RTS followed by a couple of
+   random bytes.)
+
+5. Quit: Q
+    ? Q
+
+And that's it! This gives you total control of memory for your
+exploration and machine coding needs. Note that all numbers are in
+hex, and you can also use "R" by itself to run the most recently
+examined address.
+
+Enjoy!
+
 Files
 =====
 * readme.md - This Readme file
