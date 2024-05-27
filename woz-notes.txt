@@ -1,0 +1,198 @@
+Label               BASIC Line      Ref to Fix
+ESCAPE/GETLINE      100
+SETMODE             140
+BLSKIP              150
+NEXTITEM            160
+RUN                                 210
+NEXTHEX             250
+DIG                 310             
+HEXSHIFT            320
+NOTHEX              400
+NOTSTOR                             410
+
+Subroutines
+ROL                 5000
+
+
+SETMODE
+- I am going to treat modes just a bit differently as there is not
+  a good way for me to carry out that ASL and confine it to one byte!
+  A=ASC(".") on block xam
+  A=ASC(":") on store mode
+
+RUN
+- Run is referenced on line 210. This will need to be fixed once
+  I know the line number
+
+NEXTHEX
+- Requires a bit of attention to do the hex conversion in a woz-like
+  way
+
+  I think I will settle on something like this:
+  A = A-48 to strip ascii
+  IF A<10 THEN GOTO DIG
+  A = A-7 to convert to hex digits
+
+  This proved to be wrong. I can do the EOR operation. 
+  CMP #$FA effectively subtracts FA which means it adds 2's complement
+  of FA
+  ~ 1111 1010 = 0000 0101
+  0000 00101 + 1 = 0000 0110 = 6 dec
+
+  Also, I have to remember that the ADC $88 is in fact always going to
+  add $89. I also have to constrain to a single byte since C64 BASIC
+  will do 16 bit arithmetic!
+
+  Basic idea:
+  A=(NOT(x) AND 48) OR (X AND NOT(48))
+  A=A+137 AND 255
+  C=(A+6) AND 256
+  IF C=0 THEN GOTO NOTHEX
+
+DIG 
+
+HEXSHIFT
+- I will need to simulate the ASL and ROL's interactions with carry to
+  follow the same logic
+
+A ROL routine
+P, C roll parameter P using C as carry
+P=P*2+C
+C=0
+IF A>255 THEN C=1:A=A AND 255
+
+My Modes
+       0 - Examine
+ASC(".") - Block Examine
+ASC(":") - Store
+
+Notes about store mode
+- I do not need SL and SH really. I have 16 bit numbers readily available
+- I will use SL for now, refactor later.
+
+--- Scrapping First Attempt ----
+Ok, so at this stage I decided to scrap my first attempt for a variety of
+reasons:
+
+1.) I have messed up line numbering and have some ugliness in there.
+2.) I have more complexity than I need because BASIC can handle 16 bit numbers.
+3.) I was overly eager to initalize variables, and I can shorten up the
+    code a bit. This is important since this is intended to be a type-in
+    program.
+4.) I think having a gosub to simulate the ROL instruction is too slow,
+    especially given that I don't have to do 3 of these but rather 2.
+    I will do some math magic on this part.
+
+For reference, here is where I got to:
+
+   10 rem wozmon - ported by pngwen
+   20 xl=0
+   30 xh=0
+   40 sl=0
+   50 sh=0
+   60 l=0
+   70 h=0
+   80 ys=0
+   90 mo=0
+  100 input in$:in$=in$+chr$(13)
+  110 y=0
+  120 a=0
+  130 x=0
+  140 mo=a
+  150 y=y+1
+  160 a=asc(mid$(in$,y,1))
+  170 if a=13 then goto 100
+  180 if a<asc(".") then goto 150
+  190 if a=asc(".") then goto 140
+  200 if a=asc(":") then goto 140
+  210 if a=asc("r") then goto 9999
+  220 l=x
+  230 h=x
+  240 ys=y
+  250 a=asc(mid$(in$,y,1))
+  260 a=(a and not(48)) or (not(a) and 48)
+  270 if a < 10 then goto 310
+  280 a=a+137 and 255
+  290 c=(a+6) and 256:a=a and 255
+  300 if c=0 then goto 400
+  310 a=(a*16) and 255
+  315 for i=1 to 4
+  320 c=0:p=a:gosub 5000
+  330 a=p
+  340 p=l:gosub 5000
+  350 l=p
+  360 p=h:gosub 5000
+  370 h=p
+  380 next i
+  390 y=y+1:goto 250
+  400 if y=ys then goto 100
+  410 if mo<>asc(":") then goto 9999
+  420 poke(sl,l)
+  430 goto 160
+ 5000 rem rol(p,c)
+ 5010 p=p*2+c
+ 5020 c=0
+ 5030 if p>255 then c=1:p=p and 255
+ 5040 return
+
+--- Attempt #2 ---
+
+Variable Mapping
+  - To begin, I can simplify a lot of the logic by getting rid of split
+    HL variables
+
+  - I will also refrain from premature assignment. There is no need to
+    zero these in the beginning of the program, so long as they are assigned
+    before reference.
+
+  Original      BASIC       Comment
+  --------      -----       -------
+  XAML,XAMH     XA          The "Opened" location - 16 bit
+  STL,STH       SD          The store address - 16 bit
+  L,H           H           Parsed Hex Value - 16 bit
+  YSAV          YS          Storage for Y register - 8 bit
+  MODE          MO          Mode - 8 bit
+  IN            IN$         Input String
+
+
+Label Mapping
+
+    Label           BASIC Line      References
+    -----           ----------      ----------    
+    ESC/GETLINE     20              90 280
+    SETSTOR/MODE    60              100
+    BLSKIP          70
+    NEXTITEM        80              310 420
+    RUN             320             110
+    NEXTHEX         140             270
+    DIG             200             160
+    NOTHEX          280             190
+    HEXSHIFT        210
+    NOTSTOR         330             290
+    XAMNEXT         420             330
+    SETADR          340
+    NXTPRNT         350
+    PRDATA          400             350
+    PRBYTE          1000            370 380 410
+    MOD8CHK         440
+    PRHEX           1200            1030
+
+
+Modes Mapping
+    ASCII   Numeric Mode
+    -----   ------  ----
+            0       Examine
+    .       46      Block Examine
+    :       58      Store
+
+Nexthex
+- Another improvement I will make is hardcoding the -49 instead of NOT(48)
+
+Additional Changes
+- In the C64 bitwise operations only work on signed integer ranges.
+  Greater values give a quantity error. So I had to convert to the 2s
+  complement range. 
+- This also required adjustment to values going into the peek and poke
+  operations.
+- A few inter-lines had to be added because I accidentaly broke my
+  blank-skipping logic.
